@@ -292,10 +292,14 @@ function trackKeys(keys) {
   }
   window.addEventListener("keydown", track);
   window.addEventListener("keyup", track);
+  
+  down.unregister = () => {
+    window.removeEventListener("keydown", track);
+    window.removeEventListener("keyup", track);
+  };
   return down;
 }
-const arrowKeys = 
-    trackKeys(["ArrowLeft", "ArrowRight", "ArrowUp"]);
+const arrowKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "Escape"];
 
 function runAnimation(frameFunc) {
   let lastTime = null;
@@ -315,19 +319,39 @@ function runLevel(level, Display) {
   let display = new Display(document.body, level);
   let state = State.start(level);
   let ending = 1;
+  let paused = false;
+  let released = true;
+  let trackedKeys = trackKeys(arrowKeys);
   return new Promise(resolve => {
     runAnimation(time => {
-      state = state.update(time, arrowKeys);
-      display.syncState(state);
-      if (state.status == "playing") {
-        return true;
-      } else if (ending > 0) {
-        ending -= time;
-        return true;
-      } else {
-        display.clear();
-        resolve(state.status);
-        return false;
+      if (!trackedKeys.Escape && released === false) {
+        released = true;
+      } else if (trackedKeys.Escape && paused === false && released == true) {
+        console.log("This should pause it");
+        trackedKeys.unregister();
+        trackedKeys = trackKeys(["Escape"]);
+        paused = true;
+        released = false;
+      } else if (trackedKeys.Escape && paused === true && released == true) {
+        console.log("This should unpause it");
+        trackedKeys = trackKeys(arrowKeys);
+        paused = false;
+        released = false;
+      }
+
+      if (!paused) {
+        state = state.update(time, trackedKeys);
+        display.syncState(state);
+        if (state.status == "playing") {
+          return true;
+        } else if (ending > 0) {
+          ending -= time;
+          return true;
+        } else {
+          display.clear();
+          resolve(state.status);
+          return false;
+        }
       }
     });
   });
