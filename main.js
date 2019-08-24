@@ -133,6 +133,44 @@ Player.prototype.update = function(time, state, keys) {
   return new Player(pos, new Vec(xSpeed, ySpeed));
 };
 
+class Monster {
+  constructor(pos, speed) {
+    this.pos = pos;
+    this.speed = speed;
+  }
+
+  get type() { return "monster"; }
+
+  static create(pos) {
+    return new Monster(pos, new Vec(3,0));
+  }
+
+  update(time, state) {
+    let newPos = this.pos.plus(this.speed.times(time));
+
+    // if we don't hit a wall
+    if (!state.level.touches(newPos, this.size, "wall")) {
+      return new Monster(newPos, this.speed);
+    } else { // if we do hit a wall
+      return new Monster(this.pos, this.speed.times(-1));
+    }
+  }
+
+  collide(state) {
+    let playerY = state.actors.find(function(x) 
+        {return x.type === "player"; }).pos.y;
+    let monsterY = this.pos.y;
+    if (playerY < monsterY) {
+      let filtered = state.actors.filter(a => a != this);
+      let status = state.status;
+      return new State(state.level, filtered, status);
+    } else {
+      return new State(state.level, state.actors, "lost");
+    }
+  }
+}
+Monster.prototype.size = new Vec(1.2, 2);
+
 class Lava {
   constructor(pos, speed, reset) {
     this.pos = pos;
@@ -327,13 +365,11 @@ function runLevel(level, Display) {
       if (!trackedKeys.Escape && released === false) {
         released = true;
       } else if (trackedKeys.Escape && paused === false && released == true) {
-        console.log("This should pause it");
         trackedKeys.unregister();
         trackedKeys = trackKeys(["Escape"]);
         paused = true;
         released = false;
       } else if (trackedKeys.Escape && paused === true && released == true) {
-        console.log("This should unpause it");
         trackedKeys = trackKeys(arrowKeys);
         paused = false;
         released = false;
@@ -382,7 +418,8 @@ const levelChars = {
   "o": Coin,
   "=": Lava,
   "|": Lava,
-  "v": Lava
+  "v": Lava,
+  "M": Monster
 };
 
 let simpleLevelPlan = `
